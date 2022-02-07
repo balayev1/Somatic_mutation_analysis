@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description='Filtering samplewise non-unique mu
 parser.add_argument("--annotation-dir", "-a", dest="annotationdir", required=True, help="Specify file directory with sample information Excel file", nargs=1)
 parser.add_argument("--sample-dir", "-s", dest="sampledir", required=True, help="Specify directory to VCF files", nargs=1)
 parser.add_argument("--annotation-file", "-f", dest = "annfile", required=True, help="Specify annotation file name in Excel format)", nargs=1)
+parser.add_argument("--output-dir", "-o", dest = "output", required=True, help="Specify output directory for filtered mutation list file)", nargs=1)
 args = parser.parse_args()
 
 
@@ -67,7 +68,9 @@ vcf_pd = pd.concat(vcf_list, axis=0, ignore_index=True)
 vcf_pd.shape[0] # Number of mutations (i.e. minus the duplicates)
 # 94444
 
-
+os.chdir(args.output[0])
+# Save dataframe in a text file
+vcf_pd.to_csv("dNdScv_input_mutation_list.txt", sep="\t", index=False)
 
     
 
