@@ -22,23 +22,15 @@ import time
 from multiprocessing import Process, Pool
 from itertools import product
 import argparse
-import sys
 import subprocess
-
-# If not root user, elevate to root user
-if os.geteuid() == 0:
-    print("We're root!")
-else:
-    print("We're not root.")
-    subprocess.call(['sudo', 'python3', *sys.argv])
-    sys.exit()
+import shutil
 
 parser = argparse.ArgumentParser(description='Estimating enrichment levels of mutated nucleotide motifs: Please see below options')
 parser.add_argument("--genome-dir", "-g", dest="genomedir", required=True, help="Specify reference genome file directory", nargs=1)
 parser.add_argument("--sample-dir", "-s", dest="sampledir", required=True, help="Specify directory to VCF files", nargs=1)
 parser.add_argument("--genome-file", "-f", dest = "genomefile", required=True, help="Specify reference genome file name)", nargs=1)
 parser.add_argument("--output-dir", "-o", dest = "output", required=True, help="Specify output directory for files)", nargs=1)
-parser.add_argument("--motifs", "-m", dest = "motifs", required=True, type=list, default=['TCW_WGA','CC_GG','WRC_GYW','WA_TW','AG/CT-GG/CC'], help="Specify list of motifs for enrichment estimation)", nargs=1)
+parser.add_argument("--motifs", "-m", dest = "motifs", required=True, type=str, default=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC_GG','WRC_GYW','WA_TW','AG/CT-GG/CC'], help="Specify list of motifs for enrichment estimation)", nargs="*")
 args = parser.parse_args()
 
 ####################################################
@@ -76,7 +68,7 @@ print(f'Finished indexing the genome in {end-start} second(s)')
 #########################################################
 
 ### Esimate enrichment level of the needed motifs
-def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC_GG','WRC_GYW','WA_TW','AG/CT-GG/CC']):
+def enrichment(WD, output, motifs):
     """
     Produces 2 files: 
     1) The file with number of mutations, enrichment level and P-Value scores from Fischer's Exact Test'
@@ -97,14 +89,20 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
     1) File in 'txt' format
     2) File in 'vcf' format
     """
-    os.chdir(WD)
+    print("Copying files")
+    for i in glob.glob(args.sampledir[0] + "/*/*_post_filtered_mutect2.vcf"):
+        shutil.copyfile(i, args.sampledir[0] + "/VCF_Files/" + os.path.basename(i))
+    output="/home/cluster/abalay/scratch/Cell_Lines/SNVFiles/Motif_Enrichment"
     W,R,Y=['A','T'],['A','G'],['C','T']
-    wd=glob.glob("*.vcf")
+    os.chdir(WD+"/VCF_Files")
+    wd=glob.glob("*_post_filtered_mutect2.vcf")
     variables, variables['SRA-ID']={}, []
     for file in wd:
         variables['SRA-ID'].append(file.split("_")[0])
         if "_" not in file:
             variables['SRA-ID'].append(file.split(".")[0])
+    if os.path.exists(output) == False:
+            os.mkdir(output)
     if 'TC_WG' in motifs:
         start=time.time()
         if os.path.exists(output+"/TC_WG") == False:
@@ -115,7 +113,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,apobec3a_b=open(file, "r"), open(output+"/TC_WG"+"/"+variables['SRA-ID'][num] +'_TC_WG_Mut_List.vcf','a')
+            fyle,apobec3a_b=open(file, "r"), open(output+"/TC_WG"+"/"+variables['SRA-ID'][num] +'_TC_WG_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "C" or line.split()[3] == "G":
@@ -190,7 +188,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,apobec3a_b=open(file, "r"), open(output+"/TCW_WGA"+"/"+variables['SRA-ID'][num] +'_TCW_WGA_Mut_List.vcf','a')
+            fyle,apobec3a_b=open(file, "r"), open(output+"/TCW_WGA"+"/"+variables['SRA-ID'][num] +'_TCW_WGA_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "C" or line.split()[3] == "G":
@@ -267,7 +265,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,apobec3a_b=open(file, "r"), open(output+"/YTCW_WGAR"+"/"+variables['SRA-ID'][num] +'_YTCW_WGAR_Mut_List.vcf','a')
+            fyle,apobec3a_b=open(file, "r"), open(output+"/YTCW_WGAR"+"/"+variables['SRA-ID'][num] +'_YTCW_WGAR_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "C" or line.split()[3] == "G":
@@ -346,7 +344,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,apobec3a_b=open(file, "r"), open(output+"/RTCW_WGAY"+"/"+variables['SRA-ID'][num] +'_RTCW_WGAY_Mut_List.vcf','a')
+            fyle,apobec3a_b=open(file, "r"), open(output+"/RTCW_WGAY"+"/"+variables['SRA-ID'][num] +'_RTCW_WGAY_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "C" or line.split()[3] == "G":
@@ -425,7 +423,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,apobec3g=open(file, "r"), open(output+"/CC_GG"+"/"+variables['SRA-ID'][num] +'_CC_GG_Mut_List.vcf','a')
+            fyle,apobec3g=open(file, "r"), open(output+"/CC_GG"+"/"+variables['SRA-ID'][num] +'_CC_GG_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "C" or line.split()[3] == "G":
@@ -499,7 +497,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,aid=open(file, "r"), open(output+"/WRC_GYW"+"/"+variables['SRA-ID'][num] +'_WRC_GYW_Mut_List.vcf','a')
+            fyle,aid=open(file, "r"), open(output+"/WRC_GYW"+"/"+variables['SRA-ID'][num] +'_WRC_GYW_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "C" or line.split()[3] == "G":
@@ -617,7 +615,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             positions[key] = set(positions[key])
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,adar=open(file, "r"), open(output+"/AG_CT"+"/"+variables['SRA-ID'][num] +'_ADAR_AG_CT_Mut_List.vcf','a')
+            fyle,adar=open(file, "r"), open(output+"/AG_CT"+"/"+variables['SRA-ID'][num] +'_ADAR_AG_CT_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "A" or line.split()[3] == "T":
@@ -707,7 +705,7 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
             variables[line]=[]
         for num, file in enumerate(wd, start=0):
             new = []
-            fyle,poleta_theta=open(file, "r"), open(output+"/WA_TW"+"/"+variables['SRA-ID'][num] +'_WA_TW_Mut_List.vcf','a')
+            fyle,poleta_theta=open(file, "r"), open(output+"/WA_TW"+"/"+variables['SRA-ID'][num] +'_WA_TW_Mut_List.vcf','w')
             for line in fyle.readlines():
                 if len(line.split()) > 3:
                     if line.split()[3] == "A" or line.split()[3] == "T":
@@ -779,8 +777,8 @@ def enrichment(WD, output, motifs=['TC_WG','TCW_WGA','YTCW_WGAR','RTCW_WGAY','CC
 start= time.perf_counter()
 
 if __name__ == '__main__':
-    WD, output, motifs=args.sampledir[0], args.output[0], args.motifs[0]
-    enrichment(WD, output)
+    WD, output, motifs=args.sampledir[0], args.output[0], args.motifs
+    enrichment(WD, output, motifs)
 
 finish = time.perf_counter()
 
